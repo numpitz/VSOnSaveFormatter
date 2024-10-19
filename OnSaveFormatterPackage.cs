@@ -21,22 +21,13 @@ namespace OnSaveFormatter
         private RunningDocumentTable _rdt;
         private uint _rdtCookie; // Cookie to manage event subscription
         private ExtensionPage _options;
-        
 
         #region Package Members
 
         protected override async Task InitializeAsync(CancellationToken cancellationToken, IProgress<ServiceProgressData> progress)
         {
             await base.InitializeAsync(cancellationToken, progress);
-
-            //System.Diagnostics.Debug.WriteLine("Initializing AutoFormatOnSavePackage...");
-
-            //if (_documentEvents != null)
-            //{
-            //    System.Diagnostics.Debug.WriteLine("DocumentEvents subscribed successfully.");
-            //}
-
-            await this.JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
+            await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             _options = (ExtensionPage)GetDialogPage(typeof(ExtensionPage));
             _documentSaveListener = new DocumentSaveListener(_options);
@@ -57,6 +48,7 @@ namespace OnSaveFormatter
                 return;
             }
 
+            _documentSaveListener.BeforeSave -= OnBeforeDocumentSave;
             _documentSaveListener.BeforeSave += OnBeforeDocumentSave;
             _rdtCookie = _rdt.Advise(_documentSaveListener);
         }
@@ -99,11 +91,8 @@ namespace OnSaveFormatter
                     default:      isExtAllowed = false;               break;
                 }
 
-
             if(!isExtAllowed)
-            {
                 return;
-            }
 
             FormatDocument(documentPath);
         }
@@ -112,7 +101,6 @@ namespace OnSaveFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            // Find the document by its path
             Document document = null;
             foreach (Document doc in _dte.Documents)
             {
@@ -124,25 +112,30 @@ namespace OnSaveFormatter
                 }
             }
 
-            if (document != null)
+            if (document == null)
+                return;
+
+            var originalActiveDocument = _dte.ActiveDocument;
+
+            document.Activate();
+
+            var command = _dte.Commands.Item("Edit.FormatDocument");
+            if (command != null && command.IsAvailable)
             {
-                // Save the currently active document
-                var originalActiveDocument = _dte.ActiveDocument;
-
-                // Activate the document to perform formatting
-                document.Activate();
-
-                // Ensure the format command is available
-                var command = _dte.Commands.Item("Edit.FormatDocument");
-                if (command != null && command.IsAvailable)
-                {
-                    // Trigger the format document command
-                    _dte.ExecuteCommand("Edit.FormatDocument");
-                }
-
-                // Restore the original active document
-                originalActiveDocument?.Activate();
+                _dte.ExecuteCommand("Edit.FormatDocument");
             }
+
+            originalActiveDocument?.Activate();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                Unsubscribe();
+            }
+
+            base.Dispose(disposing);
         }
 
         #endregion
