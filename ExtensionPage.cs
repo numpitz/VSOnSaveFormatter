@@ -26,6 +26,11 @@ namespace OnSaveFormatter
             set => _properties[(int)index] = value;
         }
 
+        [Category("Information")]
+        [DisplayName("Format Document Command Available")]
+        [Description("Indicates whether the 'Edit.FormatDocument' command is available in the current environment. Extension will not work without.")]
+        public bool IsFormatDocumentCommandAvailable { get; internal set; } = true;// Internal set to allow updates
+
         [Category("General")]
         [DisplayName("Enable Auto-Format On Save")]
         [Description("If disabed non of the format gets format on save.")]
@@ -44,7 +49,7 @@ namespace OnSaveFormatter
         }
 
         [Category("General")]
-        [DisplayName("auto format for .h .cpp")]
+        [DisplayName("auto format for .h .cpp .hpp")]
         public bool EnableCPP
         {
             get => this[OptionsEnabled.All] || this[OptionsEnabled.CPP];
@@ -54,7 +59,6 @@ namespace OnSaveFormatter
                 this[OptionsEnabled.CPP] = value;
             }
         }
-
 
         [Category("General")]
         [DisplayName("auto format for .cs")]

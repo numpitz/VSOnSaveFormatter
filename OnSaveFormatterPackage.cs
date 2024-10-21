@@ -5,6 +5,7 @@ using Microsoft.VisualStudio.Shell.Interop;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
+using static Nerdbank.Streams.MultiplexingStream;
 using Task = System.Threading.Tasks.Task;
 
 namespace OnSaveFormatter
@@ -30,10 +31,18 @@ namespace OnSaveFormatter
             await JoinableTaskFactory.SwitchToMainThreadAsync(cancellationToken);
 
             _options = (ExtensionPage)GetDialogPage(typeof(ExtensionPage));
+            _dte = (DTE2)await GetServiceAsync(typeof(DTE));
+
+            var command = _dte?.Commands.Item("Edit.FormatDocument");
+            if (command == null || !command.IsAvailable)
+            {
+                _options.IsFormatDocumentCommandAvailable = false;
+                _dte = null;
+                return;
+            }
+
             _documentSaveListener = new DocumentSaveListener(_options);
 
-            // Get DTE2 service
-            _dte = (DTE2)await GetServiceAsync(typeof(DTE));
             if (_dte != null)
             {
                 _rdt = new RunningDocumentTable(this);
@@ -44,9 +53,7 @@ namespace OnSaveFormatter
         private void Subscribe()
         {
             if (_rdt == null || _options == null)
-            {
                 return;
-            }
 
             _documentSaveListener.BeforeSave -= OnBeforeDocumentSave;
             _documentSaveListener.BeforeSave += OnBeforeDocumentSave;
@@ -59,6 +66,7 @@ namespace OnSaveFormatter
             {
                 _rdt.Unadvise(_rdtCookie);
                 _rdtCookie = 0;
+                _rdt = null;
             }
 
             if (_documentSaveListener != null)
@@ -69,11 +77,16 @@ namespace OnSaveFormatter
         }
         private void OnBeforeDocumentSave(object sender, string documentPath)
         {
-            string ext = System.IO.Path.GetExtension(documentPath).ToLower();
-
             if (!_options.EnableAutoFormatOnSave)
                 return;
 
+            ThreadHelper.ThrowIfNotOnUIThread();
+
+            var command = _dte.Commands.Item("Edit.FormatDocument");
+            if (command == null || !command.IsAvailable)
+                return;
+
+            string ext = System.IO.Path.GetExtension(documentPath).ToLower();
 
             bool isExtAllowed = _options.EnableAll;
 
@@ -101,39 +114,21 @@ namespace OnSaveFormatter
         {
             ThreadHelper.ThrowIfNotOnUIThread();
 
-            Document document = null;
-            foreach (Document doc in _dte.Documents)
-            {
-
-                if (doc.FullName.Equals(documentPath, StringComparison.OrdinalIgnoreCase))
-                {
-                    document = doc;
-                    break;
-                }
-            }
-
+            Document document = _dte.Documents.Item(documentPath);
             if (document == null)
                 return;
 
             var originalActiveDocument = _dte.ActiveDocument;
 
             document.Activate();
-
-            var command = _dte.Commands.Item("Edit.FormatDocument");
-            if (command != null && command.IsAvailable)
-            {
-                _dte.ExecuteCommand("Edit.FormatDocument");
-            }
-
+            _dte.ExecuteCommand("Edit.FormatDocument");
             originalActiveDocument?.Activate();
         }
 
         protected override void Dispose(bool disposing)
         {
             if (disposing)
-            {
                 Unsubscribe();
-            }
 
             base.Dispose(disposing);
         }

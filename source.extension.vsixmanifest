@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="OnSaveFormatter.17a0abb8-20c7-4d25-af71-069f0a33b977" Version="1.2" Language="de-DE" Publisher="Thomas Bankiel" />
+        <Identity Id="OnSaveFormatter.17a0abb8-20c7-4d25-af71-069f0a33b977" Version="1.3" Language="de-DE" Publisher="Thomas Bankiel" />
         <DisplayName>OnSaveFormatter</DisplayName>
         <Description xml:space="preserve">Empty VSIX Project.</Description>
     </Metadata>
